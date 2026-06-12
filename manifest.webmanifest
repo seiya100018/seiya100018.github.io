@@ -1,0 +1,16 @@
+{
+  "name": "Memo Browser",
+  "short_name": "メモ",
+  "description": "ツリー型メモアプリ (スマホ版)",
+  "lang": "ja",
+  "start_url": "./mobile.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e6e7ec",
+  "theme_color": "#3a7bff",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#3a7bff">
+  <title>Memo</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="メモ">
+  <style>
+    body { margin:0; height:100dvh; display:flex; align-items:center; justify-content:center;
+           font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+           background:#e6e7ec; color:#111114; }
+    @media (prefers-color-scheme: dark) { body { background:#141519; color:#f5f5f8; } }
+    form { display:flex; flex-direction:column; gap:12px; width:min(78vw,280px); }
+    input { font-size:16px; padding:12px; border:1px solid #b8b9bf; border-radius:10px;
+            background:#fff; color:#111; text-align:center; }
+    button { font-size:15px; padding:12px; border:none; border-radius:10px;
+             background:#2a6cff; color:#fff; }
+    #msg { font-size:13px; text-align:center; color:#c33; min-height:1.2em; margin:0; }
+  </style>
+</head>
+<body>
+  <form id="f">
+    <input type="password" id="p" placeholder="合言葉" autocomplete="current-password">
+    <button type="submit">開く</button>
+    <p id="msg"></p>
+  </form>
+  <script>
+  (function () {
+    'use strict';
+    const KEY_STORE = 'memo-site-key'; // 一度成功したら導出済み鍵を保存して次回は自動で開く
+    const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    const toB64 = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8)));
+    let encData = null;
+
+    async function loadEnc() {
+      if (encData) return encData;
+      const res = await fetch('app.enc.json');
+      const j = await res.json();
+      encData = { salt: fromB64(j.salt), iv: fromB64(j.iv), ct: fromB64(j.ct) };
+      return encData;
+    }
+    async function deriveKey(pass, salt) {
+      const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+      return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' },
+        km, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
+    }
+    async function tryOpen(key) {
+      const d = await loadEnc();
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: d.iv }, key, d.ct);
+      const html = new TextDecoder().decode(pt);
+      document.open(); document.write(html); document.close();
+    }
+    // 保存済みの鍵で自動オープン
+    (async () => {
+      const saved = localStorage.getItem(KEY_STORE);
+      if (!saved) return;
+      try {
+        const key = await crypto.subtle.importKey('raw', fromB64(saved), 'AES-GCM', false, ['decrypt']);
+        await tryOpen(key);
+      } catch (_) { /* 鍵が古い等 → 入力を待つ */ }
+    })();
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.textContent = '';
+      try {
+        const d = await loadEnc();
+        const key = await deriveKey(document.getElementById('p').value, d.salt);
+        const raw = await crypto.subtle.exportKey('raw', key);
+        await tryOpen(key);
+        localStorage.setItem(KEY_STORE, toB64(raw));
+      } catch (_) {
+        msg.textContent = '合言葉が違います';
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
