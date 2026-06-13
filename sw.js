@@ -2,7 +2,7 @@
 // アプリの「殻」 (HTML/CSS/JS/アイコン) をキャッシュして、 電波が無くても起動できるようにする。
 // メモのデータは localStorage にあるので SW は関与しない。
 // ⚠ ファイルを更新したら CACHE_VERSION を上げること — 古いキャッシュが配られ続けるのを防ぐ。
-const CACHE_VERSION = 'memo-mobile-locked-202606122357';
+const CACHE_VERSION = 'memo-mobile-locked-202606130001';
 
 const SHELL = [
   './mobile.html',
